@@ -1,0 +1,5 @@
+discord.py
+mysql-connector-python
+aiohttp
+python-dotenv
+requests

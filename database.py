@@ -86,7 +86,45 @@ async def update_web_balance(username, amount):
     finally:
         if conn.is_connected(): cursor.close(); conn.close()
 
-# (Giữ nguyên các hàm reaction cũ nếu cần, trả về rỗng)
-async def get_reaction_message_ids(): return {}
-async def save_reaction_message_id(g, m, c): pass
+# --- PHẦN 3: CẤU HÌNH BOT (REACTION ROLES) ---
+async def get_reaction_message_ids():
+    """Lấy cấu hình Reaction Role từ MySQL"""
+    conn = get_connection()
+    if not conn: return {}
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT * FROM bot_config")
+        rows = cursor.fetchall()
+        
+        # Chuyển đổi format MySQL sang Dictionary để Reaction Roles Cog dễ đọc
+        config_data = {}
+        for row in rows:
+            config_data[row['guild_id']] = {
+                'message_id': row['message_id'],
+                'channel_id': row['channel_id']
+            }
+        return config_data
+    finally:
+        if conn.is_connected(): cursor.close(); conn.close()
+
+async def save_reaction_message_id(guild_id, message_id, channel_id):
+    """Lưu cấu hình Reaction Role vào MySQL"""
+    conn = get_connection()
+    if not conn: return
+    cursor = conn.cursor()
+    try:
+        # Dùng ON DUPLICATE KEY UPDATE để tự sửa nếu đã tồn tại
+        sql = """
+            INSERT INTO bot_config (guild_id, message_id, channel_id)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE message_id = VALUES(message_id), channel_id = VALUES(channel_id)
+        """
+        cursor.execute(sql, (str(guild_id), str(message_id), str(channel_id)))
+        conn.commit()
+    except Exception as e:
+        print(f"❌ Lỗi lưu config: {e}")
+    finally:
+        if conn.is_connected(): cursor.close(); conn.close()
+
+# Hàm cũ không dùng nữa
 def initialize_firestore(): pass
